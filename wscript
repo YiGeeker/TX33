@@ -12,7 +12,7 @@ out = 'build'
 
 @Configure.conf
 def gcc_modifier_arm_none_eabi(cnf):
-    ldscript = os.path.abspath('./ldscript/stm32f103.ld')
+    ldscript = os.path.abspath('./ldscript/stm32f103xe.ld')
 
     v = cnf.env
     v.cprogram_PATTERN = '%s.elf'
