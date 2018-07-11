@@ -4,7 +4,7 @@ import subprocess
 from waflib import Configure
 
 VERSION = '1.0.0'
-APPNAME = 'TrapezoidWave'
+APPNAME = 'TX33'
 
 top = '.'
 out = 'build'
@@ -17,10 +17,6 @@ def gcc_modifier_arm_none_eabi(cnf):
     v = cnf.env
     v.cprogram_PATTERN = '%s.elf'
     v.CFLAGS_cprogram = ['-W', '-Wall', '-g', '-mcpu=cortex-m3', '-mthumb']
-    # for assembly compile
-    # v.ASFLAGS = ['-W', '-Wall', '-g', '-mcpu=cortex-m3', '-mthumb']
-    # v.AS_TGT_F = ['-o']
-    # for linking
     v.LDFLAGS_cprogram = ['-mthumb', '-mcpu=cortex-m3', '-nostartfiles', '-Wl,--start-group', '-lc', '-lm', '-Wl,--end-group', '-specs=nano.specs', '-specs=nosys.specs', '-static', '-Wl,-cref,-u,Reset_Handler', '-Wl,--gc-sections', '-Wl,--defsym=malloc_getpagesize_P=0x80']
     cnf.env.prepend_value('LDFLAGS', ['-T', ldscript, '-Wl,-Map={}.map'.format(APPNAME)])
     # for objcopy
@@ -37,12 +33,11 @@ def configure(cnf):
 
     if cnf.options.generate_cdb:
         cnf.load('clang_compilation_database')
-        cnf.env.append_value('CFLAGS', ['-isystem', 'd:/GNU/gcc-arm-none-eabi/arm-none-eabi/include'])
         print("compile_commands.json will be generated.")
 
 
 def build(bld):
-    StdRoot = 'e:/Programming/STM32/stsw-stm32054'
+    StdRoot = os.path.expanduser('~/Documents/Programming/STM32/STM32F10x_StdPeriph_Lib_V3.5.0/Libraries')
     CoreSupport = StdRoot+'/CMSIS/CM3/CoreSupport'
     DeviceSupport = StdRoot+'/CMSIS/CM3/DeviceSupport/ST/STM32F10x'
     Periph = StdRoot+'/STM32F10x_StdPeriph_Driver'

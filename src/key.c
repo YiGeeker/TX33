@@ -4,12 +4,6 @@
 #include "definition.h"
 #include "key.h"
 
-/* 微秒级延时 */
-static void Delay_Nus(uint16_t nCount)
-{
-    while(nCount--);
-}
-
 void Key_GPIO_Config(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure = {0};
@@ -100,74 +94,4 @@ void Key_All_Disable(void)
 void Key_All_Enable(void)
 {
 	EXTI->IMR |= (EXTI_Line2 | EXTI_Line3 | EXTI_Line4 | EXTI_Line5 | EXTI_Line6);
-}
-
-void EXTI2_IRQHandler(void)		/* 向上选择按键被触发 */
-{
-	if(EXTI_GetITStatus(EXTI_Line2) != RESET) /* 确保是否产生了EXTI Line中断 */
-	{
-		SendMessage(AddSelect);
-		EXTI_ClearITPendingBit(EXTI_Line2); /* 清除中断标志位 */
-	}
-	 
-}
-
-void EXTI3_IRQHandler(void)		/* 向下选择按键被触发 */
-{
-	if(EXTI_GetITStatus(EXTI_Line3) != RESET) /* 确保是否产生了EXTI Line中断 */
-	{
-		SendMessage(SubSelect);
-		EXTI_ClearITPendingBit(EXTI_Line3); /* 清除中断标志位 */
-	}  
-}
-
-void EXTI4_IRQHandler(void)		/* 菜单选择按键被触发 */
-{
-	if(EXTI_GetITStatus(EXTI_Line4) != RESET) /* 确保是否产生了EXTI Line中断 */
-	{		
-        SendMessage(SelectNext);
-		EXTI_ClearITPendingBit(EXTI_Line4); /* 清除中断标志位 */
-	}  
-}
-
-void EXTI9_5_IRQHandler(void)	/* 发射按键被触发 */
-{
-	Delay_Nus(2);
-//	if(GPIO_ReadInputDataBit(KEY_ON_PORT, KEY_ON_GPIO) == 0)
-//	{
-		if(EXTI_GetITStatus(EXTI_Line5) != RESET) /* 确保是否产生了EXTI Line中断 */
-		{
-			SendMessage(TransmitOn);
-
-			/* 禁止menu按键操作 */
-			EXTI->IMR &= ~(EXTI_Line2 | EXTI_Line3 | EXTI_Line4);
-			EXTI_ClearITPendingBit(EXTI_Line2 | EXTI_Line3 | EXTI_Line4);
-			//EXTI_ClearITPendingBit(EXTI_Line3);
-			//EXTI_ClearITPendingBit(EXTI_Line4);
-		
-			EXTI_ClearITPendingBit(EXTI_Line5 | EXTI_Line6 | EXTI_Line7 | EXTI_Line8 | EXTI_Line9); /* 清除中断标志位 */
-			//EXTI_ClearITPendingBit(EXTI_Line6);
-			//EXTI_ClearITPendingBit(EXTI_Line7);
-			//EXTI_ClearITPendingBit(EXTI_Line8);
-			//EXTI_ClearITPendingBit(EXTI_Line9);
-		}
-//	}else if(GPIO_ReadInputDataBit(KEY_OFF_PORT, KEY_OFF_GPIO) == 0)
-//	{
-		else if(EXTI_GetITStatus(EXTI_Line6) != RESET) /* 确保是否产生了EXTI Line中断 */
-		{
-			SendMessage(TransmitOff);
-
-			/* 使能menu按键操作 */
-			EXTI->IMR |= (EXTI_Line2 | EXTI_Line3 | EXTI_Line4);
-			EXTI_ClearITPendingBit(EXTI_Line2 | EXTI_Line3 | EXTI_Line4);
-			//EXTI_ClearITPendingBit(EXTI_Line3);
-			//EXTI_ClearITPendingBit(EXTI_Line4);
-		
-			EXTI_ClearITPendingBit(EXTI_Line5 | EXTI_Line6 | EXTI_Line7 | EXTI_Line8 | EXTI_Line9); /* 清除中断标志位 */
-			//EXTI_ClearITPendingBit(EXTI_Line6);
-			//EXTI_ClearITPendingBit(EXTI_Line7);
-			//EXTI_ClearITPendingBit(EXTI_Line8);
-			//EXTI_ClearITPendingBit(EXTI_Line9);
-		}
-//	}	
 }  

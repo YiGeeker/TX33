@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_gpio.h"
 #include "definition.h"
@@ -15,11 +16,11 @@ uint8_t Scroll_P10[] = {0x00, BASEPART1, 0xf0, /* 第一显示区RAM，10KB，24
 						0x00, BASEPART3,		/* 第三显示区RAM，10KB */
 						0x00, BASEPART4};		/* 第四显示区RAM，32KB */
 
-WNDRECT Wnd_Set_Waveform;		/* 设置波形窗口的位置信息 */
+//WNDRECT Wnd_Set_Waveform;		/* 设置波形窗口的位置信息 */
+WNDRECT Wnd_Set_Voltage;		/* 设置电压窗口的位置信息 */
+WNDRECT Wnd_Get_Voltage;		/* 获取电压窗口的位置信息 */
 WNDRECT Wnd_Set_Current;		/* 设置电流窗口的位置信息 */
 WNDRECT Wnd_Get_Current;		/* 获取电流窗口的位置信息 */
-/* WNDRECT Wnd_Set_Voltage; */
-/* WNDRECT Wnd_Get_Voltage; */
 WNDRECT Wnd_Set_Freq;			/* 设置频率窗口的位置信息 */
 WNDRECT Wnd_Get_Freq;			/* 获取频率窗口的位置信息 */
 WNDRECT Wnd_Set_Duty;			/* 设置占空比窗口的位置信息 */
@@ -58,7 +59,8 @@ void Lcd_GPIO_Config(void)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 |GPIO_Pin_14 | GPIO_Pin_15 | LCD_RST_GPIO; /* 液晶数据口为PE8~PE15 */
+	/* 液晶数据口为PE8~PE15 */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 |GPIO_Pin_14 | GPIO_Pin_15 | LCD_RST_GPIO;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
@@ -413,17 +415,21 @@ void Lcd_Show_Main_Sheet(void)
 	Lcd_Draw_Text(5, 12, 16, TX33_caption_text, sizeof(TX33_caption_text), 0); /* 显示“TX33” */
 	Lcd_Draw_Text(17, 12, 16, set_value_caption_text, sizeof(set_value_caption_text), 0); /* 显示“设定值” */
 	Lcd_Draw_Text(30, 12, 16, get_value_caption_text, sizeof(get_value_caption_text), 0); /* 显示“实测值” */
-	Lcd_Draw_Text(3, 51, 16, waveform_caption_text, sizeof(waveform_caption_text), 0); /* 显示“发射波形” */
-	Lcd_Draw_Text(2, 91, 16, current_cation_text, sizeof(current_cation_text), 0); /* 显示“发射电流(A)” */
-	/* Lcd_Draw_Text(2, 131, 16, voltage_caption_text, sizeof(voltage_caption_text), 0); /\* 显示“发射电压(V)” *\/ */
+	/* Lcd_Draw_Text(3, 51, 16, waveform_caption_text, sizeof(waveform_caption_text), 0); /\* 显示“发射波形” *\/ */
+	Lcd_Draw_Text(2, 51, 16, voltage_caption_text, sizeof(voltage_caption_text), 0); /* 显示“输出电压(V)” */
+	Lcd_Draw_Text(2, 91, 16, current_cation_text, sizeof(current_cation_text), 0); /* 显示“峰值电流(A)” */
 	Lcd_Draw_Text(1, 131, 16, freq_caption_text, sizeof(freq_caption_text), 0); /* 显示“发射频率(Hz)” */
 	Lcd_Draw_Text(2, 171, 16, duty_caption_text, sizeof(duty_caption_text), 0); /* 显示“占空比(%)” */
 	Lcd_Draw_Text(3, 211, 16, GPS_info_caption_text, sizeof(GPS_info_caption_text), 0); /* 显示“GPS信息” */
 
 	/* 设置各窗口坐标 */
-	Wnd_Set_Waveform.top = 51;
-	Wnd_Set_Waveform.left = 106;
-	Wnd_Set_Waveform.right = 210;
+	/* Wnd_Set_Waveform.top = 51; */
+	/* Wnd_Set_Waveform.left = 106; */
+	/* Wnd_Set_Waveform.right = 210; */
+
+	Wnd_Set_Voltage.top = 51;
+	Wnd_Set_Voltage.left = 106;
+	Wnd_Set_Voltage.right = 210;
 	
 	Wnd_Set_Current.top = 91;
 	Wnd_Set_Current.left = 106;
@@ -461,7 +467,7 @@ void Lcd_Show_Main_Sheet(void)
 /* 显示波形文字 */
 void Lcd_Set_Waveform(WAVEFORM Waveform, uint8_t Inverse)
 {
-	Lcd_Clear_Wnd_Rect(Get_Item_Struct(SetWaveform), 16);
+	//Lcd_Clear_Wnd_Rect(Get_Item_Struct(SetWaveform), 16);
 	if(Waveform == SQUARE)
 	{
 		Lcd_Draw_Text(18, 51, 16, square_text, sizeof(square_text), Inverse);
@@ -493,13 +499,17 @@ void Lcd_Set_Item_Int(WNDITEM Item, uint16_t Value, uint8_t Inverse)
 void Lcd_Set_Item_Float(WNDITEM Item, float Value, uint8_t Num, uint8_t Inverse)
 {
 	uint8_t n = 0, x = 0;
+	uint16_t d = 0, f = 0;
 	WNDRECT *lpWnd;
 	char Buffer[8];
 
 	lpWnd = Get_Item_Struct(Item);
 	Lcd_Clear_Wnd_Rect(lpWnd, 16);
-	
-    sprintf(Buffer, "%.*f", Num, Value);
+
+	d = (uint16_t)Value*(uint16_t)pow(10, Num);
+	f = (Value*(uint16_t)pow(10, Num))-d;
+    //sprintf(Buffer, "%.*f", Num, Value);
+	sprintf(Buffer, "%d.%d", (uint16_t)Value, f);
 	n = strlen(Buffer);
 
 	x = (uint8_t)((lpWnd->left+(lpWnd->right-lpWnd->left-8*n)/2+4) >> 3);
@@ -533,9 +543,9 @@ WNDRECT *Get_Item_Struct(WNDITEM Item)
 {
 	switch (Item)
 	{
-	case SetWaveform:
+	case SetVoltage:
 	{
-		return &Wnd_Set_Waveform;
+		return &Wnd_Set_Voltage;
 	}
 	case SetCurrent:
 	{

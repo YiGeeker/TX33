@@ -1,0 +1,19 @@
+# exclude everything except what maintained by hand
+/*
+!/build/
+!/inc/
+!/ldscript
+!/src/
+/build/*
+!/build/.gdbinit
+/inc/*
+!/inc/*.h
+!/ldscript/stm32f103xe.ld
+/src/*
+!src/*.c
+!openocd.cfg
+!wscript
+!waf
+!README.md
+!LICENSE
+!.gitignore

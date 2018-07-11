@@ -73,11 +73,11 @@ typedef struct struct_Wnd_Rect
 
 typedef enum enum_WndItem
 {
-	SetWaveform,				/* 设置波形窗口 */
+	SetVoltage,					/* 设置电压窗口 */
+	GetVoltage,					/* 获取电压窗口 */
+	/* SetWaveform,				/\* 设置波形窗口 *\/ */
 	SetCurrent,					/* 设置电流窗口 */
 	GetCurrent,					/* 获取电流窗口 */
-	/* SetVoltage, */
-	/* GetVoltage, */
 	SetFreq,					/* 设置频率窗口 */
 	GetFreq,					/* 获取频率窗口 */
 	SetDuty,					/* 设置占空比窗口 */
