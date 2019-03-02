@@ -1,7 +1,5 @@
 #! python
-import os
-import subprocess
-from waflib import Configure
+from waflib import Configure, Logs, TaskGen
 
 VERSION = '1.0.0'
 APPNAME = 'TX33'
@@ -12,13 +10,13 @@ out = 'build'
 
 @Configure.conf
 def gcc_modifier_arm_none_eabi(cnf):
-    ldscript = os.path.abspath('./ldscript/stm32f103xe.ld')
+    ldscript = cnf.srcnode.find_node('ldscript/stm32f103xe.ld')
 
     v = cnf.env
     v.cprogram_PATTERN = '%s.elf'
     v.CFLAGS_cprogram = ['-W', '-Wall', '-g', '-mcpu=cortex-m3', '-mthumb']
     v.LDFLAGS_cprogram = ['-mthumb', '-mcpu=cortex-m3', '-nostartfiles', '-Wl,--start-group', '-lc', '-lm', '-Wl,--end-group', '-specs=nano.specs', '-specs=nosys.specs', '-static', '-Wl,-cref,-u,Reset_Handler', '-Wl,--gc-sections', '-Wl,--defsym=malloc_getpagesize_P=0x80']
-    cnf.env.prepend_value('LDFLAGS', ['-T', ldscript, '-Wl,-Map={}.map'.format(APPNAME)])
+    cnf.env.prepend_value('LDFLAGS', ['-T', ldscript.bldpath(), '-Wl,-Map={}.map'.format(APPNAME)])
     # for objcopy
     cnf.xcheck_host_prog('OBJCOPY', 'objcopy')
 
@@ -30,28 +28,43 @@ def options(opt):
 def configure(cnf):
     cnf.env['CHOST'] = 'arm-none-eabi'
     cnf.load('c cross_gnu')
+    cnf.env.PREFIX = cnf.srcnode.abspath()
 
     if cnf.options.generate_cdb:
         cnf.load('clang_compilation_database')
-        print("compile_commands.json will be generated.")
+        Logs.info("compile_commands.json will be generated.")
 
 
 def build(bld):
-    StdRoot = os.path.expanduser('~/Documents/Programming/STM32/STM32F10x_StdPeriph_Lib_V3.5.0/Libraries')
-    CoreSupport = StdRoot+'/CMSIS/CM3/CoreSupport'
-    DeviceSupport = StdRoot+'/CMSIS/CM3/DeviceSupport/ST/STM32F10x'
-    Periph = StdRoot+'/STM32F10x_StdPeriph_Driver'
+    StdRoot = bld.srcnode.find_dir('lib')
+    CoreSupport = StdRoot.find_dir('/CMSIS/CM3/CoreSupport')
+    DeviceSupport = StdRoot.find_dir('/CMSIS/CM3/DeviceSupport/ST/STM32F10x')
+    Periph = StdRoot.find_dir('/STM32F10x_StdPeriph_Driver')
 
     Periph_files = ['misc.c', 'stm32f10x_exti.c', 'stm32f10x_gpio.c', 'stm32f10x_rcc.c', 'stm32f10x_tim.c']
-    source_files = bld.path.ant_glob(['src/*.c'])
-    source_files += bld.root.find_node(DeviceSupport).ant_glob('system_stm32f10x.c')
-    source_files += bld.root.find_node(Periph).ant_glob(['src/'+periphfile for periphfile in Periph_files])
+    source_files = bld.srcnode.ant_glob('src/*.c')
+    source_files += [DeviceSupport.find_node('system_stm32f10x.c')]
+    source_files += [Periph.find_node('src/{}'.format(periphfile)) for periphfile in Periph_files]
 
-    bld.program(source=source_files, target=APPNAME, includes=['inc', Periph+'/inc', CoreSupport, DeviceSupport], defines=['STM32F10X_HD', 'USE_STDPERIPH_DRIVER'])
-    bld(rule='${OBJCOPY} -O ihex ${SRC} ${TGT}', source='{}.elf'.format(APPNAME), target='{}.hex'.format(APPNAME))
-    bld(rule='${OBJCOPY} -O binary ${SRC} ${TGT}', source='{}.elf'.format(APPNAME), target='{}.bin'.format(APPNAME))
+    bld.program(source=source_files, target=APPNAME, includes=['inc', Periph.find_dir('inc').srcpath(), CoreSupport.srcpath(), DeviceSupport.srcpath()], defines=['STM32F10X_HD', 'USE_STDPERIPH_DRIVER'], install_path='${PREFIX}')
+    bld(rule='${OBJCOPY} -O ihex ${SRC} ${TGT}', source='{}.elf'.format(APPNAME), target='{}.hex'.format(APPNAME), install_path='${PREFIX}')
+    bld(rule='${OBJCOPY} -O binary ${SRC} ${TGT}', source='{}.elf'.format(APPNAME), target='{}.bin'.format(APPNAME), install_path='${PREFIX}')
 
 
 def download(ctx):
     suffix = 'hex'
-    subprocess.call(['openocd', '-f', 'openocd.cfg', '-c', 'init', '-c', 'halt', '-c', "flash write_image erase build/{}.{}".format(APPNAME, suffix), '-c', 'reset', '-c', 'shutdown'])
+    ctx.exec_command('openocd -f {} -c init -c halt -c flash write_image erase {}.{}'.format('openocd.cfg', APPNAME, suffix), cwd=ctx.bldnode)
+
+# Copy compile_commands.json to the project root
+@TaskGen.feature('c', 'cxx')
+@TaskGen.after_method('process_use', 'collect_compilation_db_tasks')
+def post_collect_compilation_db_tasks(self):
+    self.bld.add_post_fun(copy_compile_commands)
+
+
+def copy_compile_commands(ctx):
+    src_file = ctx.bldnode.find_node('compile_commands.json')
+    if(src_file):
+        ctx.srcnode.make_node('compile_commands.json').write(src_file.read())
+
+        Logs.info("Build commands will be stored in compile_commands.json")

@@ -1,11 +1,8 @@
 # exclude everything except what maintained by hand
 /*
-!/build/
 !/inc/
 !/ldscript
 !/src/
-/build/*
-!/build/.gdbinit
 /inc/*
 !/inc/*.h
 !/ldscript/stm32f103xe.ld
@@ -16,4 +13,5 @@
 !waf
 !README.md
 !LICENSE
+!.gdbinit
 !.gitignore
