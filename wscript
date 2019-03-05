@@ -1,5 +1,6 @@
 #! python
-from waflib import Configure, Logs, TaskGen
+from waflib import Configure, Logs, Errors, TaskGen
+from waflib.Build import BuildContext
 
 VERSION = '1.0.0'
 APPNAME = 'TX33'
@@ -29,14 +30,16 @@ def configure(cnf):
     cnf.env['CHOST'] = 'arm-none-eabi'
     cnf.load('c cross_gnu')
     cnf.env.PREFIX = cnf.srcnode.abspath()
+    cnf.env.CLANG_COMPILATION_DATABASE = 0
 
     if cnf.options.generate_cdb:
         cnf.load('clang_compilation_database')
+        cnf.env.CLANG_COMPILATION_DATABASE = 1
         Logs.info("compile_commands.json will be generated.")
 
 
 def build(bld):
-    StdRoot = bld.srcnode.find_dir('lib')
+    StdRoot = bld.srcnode.find_dir('STM32F10x_StdPeriph_Lib')
     CoreSupport = StdRoot.find_dir('/CMSIS/CM3/CoreSupport')
     DeviceSupport = StdRoot.find_dir('/CMSIS/CM3/DeviceSupport/ST/STM32F10x')
     Periph = StdRoot.find_dir('/STM32F10x_StdPeriph_Driver')
@@ -52,19 +55,28 @@ def build(bld):
 
 
 def download(ctx):
-    suffix = 'hex'
-    ctx.exec_command('openocd -f {} -c init -c halt -c flash write_image erase {}.{}'.format('openocd.cfg', APPNAME, suffix), cwd=ctx.bldnode)
+    download_file = ctx.bldnode.find_node('{}.hex'.format(APPNAME))
+    if(download_file):
+        ctx.exec_command('openocd -f {} -c init -c halt -c flash write_image erase {}'.format('openocd.cfg', download_file.bldpath()), cwd=ctx.bldnode)
+    else:
+        raise Errors.WafError(msg='Please build the project first !')
+
+
+class Download(BuildContext):
+    cmd = 'download'
+    fun = 'download'
+
 
 # Copy compile_commands.json to the project root
 @TaskGen.feature('c', 'cxx')
 @TaskGen.after_method('process_use', 'collect_compilation_db_tasks')
 def post_collect_compilation_db_tasks(self):
-    self.bld.add_post_fun(copy_compile_commands)
+    if(self.bld.env.CLANG_COMPILATION_DATABASE):
+        self.bld.add_post_fun(copy_compile_commands)
 
 
 def copy_compile_commands(ctx):
     src_file = ctx.bldnode.find_node('compile_commands.json')
     if(src_file):
         ctx.srcnode.make_node('compile_commands.json').write(src_file.read())
-
         Logs.info("Build commands will be stored in compile_commands.json")

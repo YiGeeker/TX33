@@ -3,6 +3,7 @@
 !/inc/
 !/ldscript
 !/src/
+!/STM32F10x_StdPeriph_Lib/
 /inc/*
 !/inc/*.h
 !/ldscript/stm32f103xe.ld
@@ -11,6 +12,9 @@
 !openocd.cfg
 !wscript
 !waf
+!CMakeLists.txt
+!stm32-cm3-gcc.cmake
+!copy-compile_commands.cmake
 !README.md
 !LICENSE
 !.gdbinit
